@@ -18,13 +18,16 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
     """
     def handle(self):
         # self.request is the TCP socket connected to the client
-        self.data = self.request.recv(1024).strip()
+        self.data = self.request.recv(1024)
         print "%s wrote:" % self.client_address[0]
         print repr(self.data), len(self.data)
-        data = struct.unpack("3iIi", self.data)
         print time.time()
+        if len(self.data) < 1:
+            return
+        #for d in self.data:
+        #    print int(struct.unpack('c', d)[0])
+        data = struct.unpack("3iIi", self.data)
         print data
-        
         ra = data[3]*(M_PI/0x80000000)
         dec = data[4]*(M_PI/0x80000000)
         cdec = cos(dec)
@@ -53,4 +56,5 @@ if __name__ == "__main__":
     try:
         server.serve_forever()
     except KeyboardInterrupt:
+        #server.shutdown()
         sys.exit(0)
