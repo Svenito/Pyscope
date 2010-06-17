@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
 import SocketServer
+import socket
+
 import struct
 import time
 import sys
@@ -46,8 +48,23 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         self.request.close()
 
 if __name__ == "__main__":
+    
     HOST, PORT = "localhost", 10001
-
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind((HOST, PORT))
+    s.listen(1)
+    conn, addr = s.accept()
+    print "Connected by", addr
+    while 1:
+        data = conn.recv(1024)
+        if len(data) < 1: continue
+        print data
+        print repr(data)
+        print struct.unpack("3iIi", data)
+        conn.send(data)
+    conn.close()
+    
+    """
     # Create the server, binding to localhost on port 9999
     server = SocketServer.TCPServer((HOST, PORT), MyTCPHandler)
     server.allow_reuse_address = True
@@ -57,4 +74,4 @@ if __name__ == "__main__":
         server.serve_forever()
     except KeyboardInterrupt:
         #server.shutdown()
-        sys.exit(0)
+        sys.exit(0)"""
