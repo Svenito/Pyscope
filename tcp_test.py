@@ -14,19 +14,11 @@ open_sockets = []
 # SOCK_STREAM means a TCP connection.
 # SOCK_DGRAM would mean an UDP "connection".
 listening_socket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+# Allow reuse of socket if socket is idle
 listening_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-# The parameter is (host, port).
-# The host, when empty or when 0.0.0.0, means to accept connections for
-# all IP addresses of current machine. Otherwise, the socket will bind
-# itself only to one IP.
-# The port must greater than 1023 if you plan running this script as a
-# normal user. Ports below 1024 require root privileges.
 listening_socket.bind( ("", 10001) )
-
-# The parameter defines how many new connections can wait in queue.
-# Note that this is NOT the number of open connections (which has no limit).
-# Read listen(2) man page for more information.
+listening_socket.setblocking(0)
 listening_socket.listen(5)
 
 current_position = []
@@ -61,10 +53,11 @@ def printit(ra_int, dec_int):
     print "ra =", h,"h", ra_m,"m",ra_s,".",ra_ms
     print "dec =",dec_sign, d,"d", dec_m,"m",dec_s,".",dec_ms
 
-
+data = [0, 0, 0, 0, 0]
 while True:
     # Waits for I/O being available for reading from any socket object.
-    rlist, wlist, xlist = select.select( [listening_socket] + open_sockets, [], [] )
+    rlist, wlist, xlist = select.select( [listening_socket] + open_sockets, 
+                                         [listening_socket] + open_sockets, [])
     for i in rlist:
         if i is listening_socket:
             new_socket, addr = listening_socket.accept()
@@ -75,9 +68,7 @@ while True:
                 open_sockets.remove(i)
                 print "Connection closed"
             else:
-                print repr(data)
                 data = struct.unpack("3iIi", data)
-                print "%x, %o" % (data[3], data[3])
                 ra = data[3]*(M_PI/0x80000000)
                 dec = data[4]*(M_PI/0x80000000)
                 cdec = cos(dec)
@@ -87,13 +78,15 @@ while True:
                 desired_pos.append(sin(ra)*cdec)
                 desired_pos.append(sin(dec))
                 printit(data[3], data[4])
-                print desired_pos
                 
                 #Set desired position and get current
                 #send current position back to client
                 #update current position
                 
-                reply = struct.pack("3iIii", 24, 0, time.time(), data[3], data[4], 0)
-                #print repr(reply)
                 print
-                i.send(reply)
+    for w in wlist:
+        if not w is listening_socket:
+            reply = struct.pack("3iIii", 24, 0, time.time(), data[3], data[4], 0)
+            wlist[0].send(reply)
+
+    time.sleep(1)
